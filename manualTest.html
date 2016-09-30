@@ -1,0 +1,58 @@
+<!doctype html5>
+<html>
+  <head>
+    <script src="bundle.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.0.1.css">
+  </head>
+  <body>
+
+  </body>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.2/require.min.js"></script>
+  <script>
+    function transformToAssocArray( prmstr ) {
+        var params = {};
+        var prmarr = prmstr.split("&");
+        for ( var i = 0; i < prmarr.length; i++) {
+            var tmparr = prmarr[i].split("=");
+            params[tmparr[0]] = tmparr[1];
+        }
+        return params;
+    }
+    function getSearchParameters() {
+          var prmstr = window.location.search.substr(1);
+          return prmstr != null && prmstr != "" ? transformToAssocArray(prmstr) : {};
+    }
+    console.log('Package:', rm);
+
+    function accept() {
+      return function() {
+        console.log('Test passed');
+      }
+    }
+
+    function discard() {
+      return function(e) {
+        console.error(e);
+      }
+    }
+
+    function qUnitTestUnit(data) {
+
+        data[1](rm).then(accept()).catch(discard());
+
+    }
+
+    var tests = ['assignState', 'reaction', 'dispatchCallback'];
+
+    var argv = getSearchParameters();
+
+    require(tests.filter(function(v) {
+      return !argv.unit||v==argv.unit;
+    }).map(function(v) { return 'tests/units/'+v+'.js'; }), function() {
+      Array.from(arguments).map(function(v, i) {
+        return [tests[i], v];
+      }).forEach(qUnitTestUnit);
+    });
+  </script>
+</html>
