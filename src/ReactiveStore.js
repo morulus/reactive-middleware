@@ -1,49 +1,15 @@
-import { Subject } from 'rxjs-es/Subject';
-import { Observable } from 'rxjs-es/Observable';
-import 'rxjs-es/add/operator/map';
-import 'rxjs-es/add/operator/mergeMap';
-import 'rxjs-es/add/operator/filter';
-import 'rxjs-es/add/operator/do';
-import 'rxjs-es/add/operator/distinct';
-import 'rxjs-es/add/operator/delay';
-import 'rxjs-es/add/operator/debounce';
+
+if (process.env.NODE_ENV==='development') console.debug('Reactive-middleware in development mode. To build production use NODE_ENV=production option in command line.');
+
 import isAction from './isAction.js';
+import isObservable from './isObservable.js';
 import { $$MIDDLEWARES, $$STATE, $$CONTEXT, ACTION_ASSIGN_STATE } from './constants.js';
-import isPlainObject from 'lodash/isPlainObject';
-import forEach from 'lodash/forEach';
+import isPlainObject from './isPlainObject';
+import forEach from './forEach';
 import depose from './depose.js';
 import assignState from './assignState.js';
 import { actionAssignState } from './actionFactories.js';
 import debug from './debug.js';
-
-/**
- * Subject.prototype.action - Puts to sequence an action and remembers this token
- *
- * @param  {object} action
- * @param  {function} [callback]
- */
-Subject.prototype.action = function(action, callback) {
-  if ("undefined"===typeof this.actions) this.actions = {};
-  if ("undefined"===typeof this.actions[action.type]) this.actions[action.type] = [];
-  this.actions[action.type].push(callback);
-  this.next(Object.freeze(action));
-}
-
-
-/**
- * Subject.prototype.actionRelease - Release an action and execute token
- *
- * @param  {type} action description
- * @return {type}        description
- */
-Subject.prototype.actionRelease = function(actionName) {
-  if (this.actions[actionName]) {
-    let cb = this.actions[actionName].pop();
-    if ("function"===typeof cb) {
-      cb();
-    }
-  }
-}
 
 /**
  * errorHandler for deposit observer
@@ -96,14 +62,13 @@ const actions = {
 /**
  * Reactive store
  */
-export default class ReactiveStore {
+class ReactiveStore {
   constructor(defaultState, middlewares, context) {
     this[$$MIDDLEWARES] = {};
     this[$$STATE] = defaultState||{};
     this[$$CONTEXT] = context||this;
     this.actions = actions;
-    this.Observable = Observable;
-    this.Subject = Subject;
+    this.Rx = ReactiveStore.Rx;
     if (isPlainObject(middlewares)) {
       forEach(middlewares, (middleware, actionName) => {
         this.registerMiddleware(actionName, middleware);
@@ -123,12 +88,12 @@ export default class ReactiveStore {
    */
   registerMiddleware(actionName, middleware) {
     if (!this[$$MIDDLEWARES][actionName]) {
-      this[$$MIDDLEWARES][actionName] = new Subject();
+      this[$$MIDDLEWARES][actionName] = new this.Rx.Subject();
       this[$$MIDDLEWARES][actionName].depose = depose.withAction(actionName, this);
     }
 
-    var depositeObservable = middleware(this[$$MIDDLEWARES][actionName], this, this[$$CONTEXT]);
-    if (depositeObservable instanceof Observable) {
+    var depositeObservable = middleware.call(this[$$CONTEXT], this[$$MIDDLEWARES][actionName], this, this[$$CONTEXT]);
+    if (isObservable(depositeObservable)) {
       return depositeObservable.subscribe(this[$$MIDDLEWARES][actionName].depose, errorHandler, completeHandler.bind(this, actionName));
     } else {
       if (process.env.NODE_ENV==='development') console.log(middleware.toString());
@@ -145,10 +110,17 @@ export default class ReactiveStore {
    * @return {type}        description
    */
   dispatch(action, callback) {
-    if (process.env.NODE_ENV=='development') {
-      console.debug('action', action.type);
-    }
     debug(isAction(action), 'ReactiveStore prototype\'s method dispatch(action) requires an action object');
+    if (process.env.NODE_ENV==='development') {
+      var info = [];
+      for (var prop in action) {
+        if (action.hasOwnProperty(prop)&&prop!=='type') {
+          info.push(prop+': '+JSON.stringify(action[prop]));
+        }
+      }
+      console.log("%c"+action.type+': '+info.join(', '), "color:gray;font-size:80%;");
+    }
+    
     if (this[$$MIDDLEWARES][action.type]) {
       this[$$MIDDLEWARES][action.type].action(action, callback);
     }
@@ -161,3 +133,39 @@ export default class ReactiveStore {
     return this[$$STATE];
   }
 }
+
+ReactiveStore.setRx = function(Rx) {
+  /**
+   * Subject.prototype.action - Puts to sequence an action and remembers this token
+   *
+   * @param  {object} action
+   * @param  {function} [callback]
+   */
+  var nextMethodName = "function"===typeof Rx.Subject.prototype.next?'next':'onNext';
+  Rx.Subject.prototype.action = function(action, callback) {
+    if ("undefined"===typeof this.actions) this.actions = {};
+    if ("undefined"===typeof this.actions[action.type]) this.actions[action.type] = [];
+    this.actions[action.type].push(callback);
+    this[nextMethodName](Object.freeze(action));
+  }
+
+
+  /**
+   * Subject.prototype.actionRelease - Release an action and execute token
+   *
+   * @param  {type} action description
+   * @return {type}        description
+   */
+  Rx.Subject.prototype.actionRelease = function(actionName) {
+    if (this.actions[actionName]) {
+      let cb = this.actions[actionName].pop();
+      if ("function"===typeof cb) {
+        cb();
+      }
+    }
+  }
+
+  ReactiveStore.Rx = Rx;
+};
+
+export default ReactiveStore;

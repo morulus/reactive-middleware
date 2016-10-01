@@ -1,3 +1,5 @@
+
+
 var path = require("path");
 var webpack = require('webpack');
 
@@ -8,18 +10,15 @@ var autoprefixer = require('autoprefixer')({
   ]
 });
 
-
 var postcssnested = require('postcss-nested');
 
-
 var postcssFor = require('postcss-for');
-
 
 var ProgressBarPlugin = require('progress-bar-webpack-plugin');
 
 module.exports = {
   entry: {
-    app: ["./src/rm.js"]
+    app: [process.env.EQUIP=='rx' ? "./src/rmrx.js" : "./src/rm.js"]
   },
   module: {
     loaders: [{
@@ -42,7 +41,9 @@ module.exports = {
     ]
   },
   plugins: [
-    new ProgressBarPlugin()
+    new webpack.DefinePlugin({
+        'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV||'development')
+    })
   ],
   postcss: function() {
     return [autoprefixer, postcssnested, postcssFor];
@@ -50,7 +51,7 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, "./dist"),
     publicPath: "/",
-    filename: "bundle.js",
+    filename: process.env.EQUIP=='rx' ? "rmrx.js" : "rm.js",
     libraryTarget: 'umd',
     library: 'rm'
   }

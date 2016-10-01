@@ -27,13 +27,13 @@ function actionPostSetValue(value) {
 function setValue(source, provider) {
   return source
   .flatMap(function(action) {
-    var s = new provider.Subject();
+    var s = new provider.Rx.Subject();
     setTimeout(function() {
-      s.next(new Promise(function(resolve, reject) {
+      s.onNext(new Promise(function(resolve, reject) {
         setTimeout(resolve, 100);
       }));
-      s.next(true);
-      s.next(actionPostSetValue(action.value));
+      s.onNext(true);
+      s.onNext(actionPostSetValue(action.value));
     });
     return s;
   });

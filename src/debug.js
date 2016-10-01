@@ -5,5 +5,5 @@ export default function debug(expression, failMessage) {
   } else {
     result = expression;
   }
-  if (!failMessage) throw (failMessage instanceof Error) ? failMessage : new Error(failMessage);
+  if (!result) throw (failMessage instanceof Error) ? failMessage : new Error(failMessage);
 }

@@ -1,5 +1,5 @@
 import { $$STATE } from './constants.js';
-import isPlainObject from 'lodash/isPlainObject';
+import isPlainObject from './isPlainObject';
 /**
  * assign state
  *
