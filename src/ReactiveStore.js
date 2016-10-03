@@ -130,7 +130,7 @@ class ReactiveStore {
   }
 
   getState() {
-    return this[$$STATE];
+    return (process.env.NODE_ENV==='development') ? Object.freeze(Object.assign({}, this[$$STATE])) : this[$$STATE];
   }
 }
 
