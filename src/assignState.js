@@ -8,7 +8,7 @@ import isPlainObject from './isPlainObject';
  */
 export default function assignState(source) {
   return source
-  .map((action) => {
+  .do((action) => {
     Object.assign(this[$$STATE], isPlainObject(action.state)?action.state:{});
   });
 }

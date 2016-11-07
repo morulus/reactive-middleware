@@ -1,10 +1,10 @@
 {
   "name": "reactive-middleware",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Store with reactive middleware architecture",
   "main": "src/rm.js",
   "scripts": {
-    "test": "ava",
+    "test": "ava tests",
     "prodrx": "NODE_ENV=production, EQUIP=rx  webpack --progress",
     "prod": "NODE_ENV=production, EQUIP=none  webpack --progress",
     "devrx": "NODE_ENV=development, EQUIP=rx  webpack --progress",

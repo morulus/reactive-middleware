@@ -3,7 +3,7 @@ if (process.env.NODE_ENV==='development') console.debug('Reactive-middleware in 
 
 import isAction from './isAction.js';
 import isObservable from './isObservable.js';
-import { $$MIDDLEWARES, $$STATE, $$CONTEXT, ACTION_ASSIGN_STATE } from './constants.js';
+import { $$MIDDLEWARES, $$STATE, $$CONTEXT, $$SUBSCRIBERS, $$SUBSCRIBE_CURRENT_ID, ACTION_ASSIGN_STATE } from './constants.js';
 import isPlainObject from './isPlainObject';
 import forEach from './forEach';
 import depose from './depose.js';
@@ -55,6 +55,20 @@ function createUnsubcriber(unsubscribeItems) {
   }
 }
 
+
+/**
+ * applyState - Call all subscribed handlers
+ */
+function applyState() {
+  for (let sub of this[$$SUBSCRIBERS]) {
+    sub.handler(this[$$STATE]);
+  }
+}
+
+function nextSubscribeId(context) {
+  return context[$$SUBSCRIBE_CURRENT_ID] = isNaN(++context[$$SUBSCRIBE_CURRENT_ID])?1:context[$$SUBSCRIBE_CURRENT_ID];
+}
+
 const actions = {
   assignState: actionAssignState
 }
@@ -67,6 +81,7 @@ class ReactiveStore {
     this[$$MIDDLEWARES] = {};
     this[$$STATE] = defaultState||{};
     this[$$CONTEXT] = context||this;
+    this[$$SUBSCRIBERS] = [];
     this.actions = actions;
     this.Rx = ReactiveStore.Rx;
     if (isPlainObject(middlewares)) {
@@ -77,7 +92,12 @@ class ReactiveStore {
     /**
      * Define fixed middlewares
      */
-     this.registerMiddleware(ACTION_ASSIGN_STATE, assignState.bind(this));
+     this.registerMiddleware(ACTION_ASSIGN_STATE, function(...args) {
+       return assignState.apply(this, args)
+       .do(() => {
+         applyState.call(this);
+       });
+     });
   }
 
   /**
@@ -120,7 +140,7 @@ class ReactiveStore {
       }
       console.log("%c"+action.type+': '+info.join(', '), "color:gray;font-size:80%;");
     }
-    
+
     if (this[$$MIDDLEWARES][action.type]) {
       this[$$MIDDLEWARES][action.type].action(action, callback);
     }
@@ -131,6 +151,29 @@ class ReactiveStore {
 
   getState() {
     return (process.env.NODE_ENV==='development') ? Object.freeze(Object.assign({}, this[$$STATE])) : this[$$STATE];
+  }
+
+
+  /**
+   * Subscribe to state change event
+   *
+   * @param  {function} handler
+   * @return {function} Unsubscribe
+   */
+  subscribe(handler) {
+    let id = nextSubscribeId(this);
+    this[$$SUBSCRIBERS].push({
+      id: id,
+      handler: handler
+    });
+
+    return () => {
+        for (let index=0;index<this[$$SUBSCRIBERS].length;++index) {
+          if (this[$$SUBSCRIBERS][index].id===id) {
+            this[$$SUBSCRIBERS].splice(index, 1);
+          }
+        }
+    }
   }
 }
 

@@ -39,6 +39,7 @@
     var tests = ['assignState', 'reaction', 'dispatchCallback'];
 
     require(tests.map(function(v) { return 'tests/units/'+v+'.js'; }), function() {
+      
       Array.from(arguments).map(function(v, i) {
         return [tests[i], v];
       }).forEach(qUnitTestUnit);
