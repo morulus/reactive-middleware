@@ -84,7 +84,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	  throw new Error('Reactive-middleware requires RxJs >=4.*. Run `bower install rxjs --save` to get it.');
 	}
 
-	debugger;
 	_ReactiveStore2.default.setRx(Rx);
 
 	function createStore(defaultState, middlewares) {
@@ -144,7 +143,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-	if (true) console.debug('Reactive-middleware in development mode. To build production use NODE_ENV=production option in command line.');
+	if (false) console.debug('Reactive-middleware in development mode. To build production use NODE_ENV=production option in command line.');
 
 	/**
 	 * errorHandler for deposit observer
@@ -188,6 +187,40 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	}
 
+	/**
+	 * applyState - Call all subscribed handlers
+	 */
+	function applyState() {
+	  var _iteratorNormalCompletion = true;
+	  var _didIteratorError = false;
+	  var _iteratorError = undefined;
+
+	  try {
+	    for (var _iterator = this[_constants.$$SUBSCRIBERS][Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+	      var sub = _step.value;
+
+	      sub.handler(this[_constants.$$STATE]);
+	    }
+	  } catch (err) {
+	    _didIteratorError = true;
+	    _iteratorError = err;
+	  } finally {
+	    try {
+	      if (!_iteratorNormalCompletion && _iterator.return) {
+	        _iterator.return();
+	      }
+	    } finally {
+	      if (_didIteratorError) {
+	        throw _iteratorError;
+	      }
+	    }
+	  }
+	}
+
+	function nextSubscribeId(context) {
+	  return context[_constants.$$SUBSCRIBE_CURRENT_ID] = isNaN(++context[_constants.$$SUBSCRIBE_CURRENT_ID]) ? 1 : context[_constants.$$SUBSCRIBE_CURRENT_ID];
+	}
+
 	var actions = {
 	  assignState: _actionFactories.actionAssignState
 	};
@@ -205,6 +238,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    this[_constants.$$MIDDLEWARES] = {};
 	    this[_constants.$$STATE] = defaultState || {};
 	    this[_constants.$$CONTEXT] = context || this;
+	    this[_constants.$$SUBSCRIBERS] = [];
 	    this.actions = actions;
 	    this.Rx = ReactiveStore.Rx;
 	    if ((0, _isPlainObject2.default)(middlewares)) {
@@ -215,7 +249,21 @@ return /******/ (function(modules) { // webpackBootstrap
 	    /**
 	     * Define fixed middlewares
 	     */
-	    this.registerMiddleware(_constants.ACTION_ASSIGN_STATE, _assignState2.default.bind(this));
+	    this.registerMiddleware(_constants.ACTION_ASSIGN_STATE, function () {
+	      var _this2 = this;
+
+	      for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+	        args[_key] = arguments[_key];
+	      }
+
+	      return _assignState2.default.apply(this, args).do(function () {
+	        applyState.call(_this2);
+	      });
+	    });
+	    /**
+	     *
+	     */
+	    this.dispatch = this[_constants.$$DISPATCH].bind(this);
 	  }
 
 	  /**
@@ -238,7 +286,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      if ((0, _isObservable2.default)(depositeObservable)) {
 	        return depositeObservable.subscribe(this[_constants.$$MIDDLEWARES][actionName].depose, errorHandler, completeHandler.bind(this, actionName));
 	      } else {
-	        if (true) console.log(middleware.toString());
+	        if (false) console.log(middleware.toString());
 	        throw new Error('Middleware must return instance of Observable, but middleware returns ' + (typeof depositeObservable === 'undefined' ? 'undefined' : _typeof(depositeObservable)));
 	      }
 	    }
@@ -252,13 +300,19 @@ return /******/ (function(modules) { // webpackBootstrap
 	     */
 
 	  }, {
-	    key: 'dispatch',
-	    value: function dispatch(action, callback) {
-
-	      if (true) {
-	        console.debug('action', action.type, action);
-	      }
+	    key: _constants.$$DISPATCH,
+	    value: function value(action, callback) {
 	      (0, _debug2.default)((0, _isAction2.default)(action), 'ReactiveStore prototype\'s method dispatch(action) requires an action object');
+	      if (false) {
+	        var info = [];
+	        for (var prop in action) {
+	          if (action.hasOwnProperty(prop) && prop !== 'type') {
+	            info.push(prop + ': ' + JSON.stringify(action[prop]));
+	          }
+	        }
+	        console.log("%c" + action.type + ': ' + info.join(', '), "color:gray;font-size:80%;");
+	      }
+
 	      if (this[_constants.$$MIDDLEWARES][action.type]) {
 	        this[_constants.$$MIDDLEWARES][action.type].action(action, callback);
 	      } else {
@@ -268,17 +322,41 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'getState',
 	    value: function getState() {
-	      return this[_constants.$$STATE];
+	      return  false ? Object.freeze(Object.assign({}, this[_constants.$$STATE])) : this[_constants.$$STATE];
+	    }
+
+	    /**
+	     * Subscribe to state change event
+	     *
+	     * @param  {function} handler
+	     * @return {function} Unsubscribe
+	     */
+
+	  }, {
+	    key: 'subscribe',
+	    value: function subscribe(handler) {
+	      var _this3 = this;
+
+	      var id = nextSubscribeId(this);
+	      this[_constants.$$SUBSCRIBERS].push({
+	        id: id,
+	        handler: handler
+	      });
+
+	      return function () {
+	        for (var index = 0; index < _this3[_constants.$$SUBSCRIBERS].length; ++index) {
+	          if (_this3[_constants.$$SUBSCRIBERS][index].id === id) {
+	            _this3[_constants.$$SUBSCRIBERS].splice(index, 1);
+	          }
+	        }
+	      };
 	    }
 	  }]);
 
 	  return ReactiveStore;
 	}();
 
-	exports.default = ReactiveStore;
-
-
-	ReactiveStore.setRx(function (Rx) {
+	ReactiveStore.setRx = function (Rx) {
 	  /**
 	   * Subject.prototype.action - Puts to sequence an action and remembers this token
 	   *
@@ -309,7 +387,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 
 	  ReactiveStore.Rx = Rx;
-	});
+	};
+
+	exports.default = ReactiveStore;
 	module.exports = exports['default'];
 
 /***/ },
@@ -391,6 +471,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	var $$STATE = exports.$$STATE = Symbol('state');
 	var $$MIDDLEWARES = exports.$$MIDDLEWARES = Symbol('middlewares');
 	var $$CONTEXT = exports.$$CONTEXT = Symbol('context');
+	var $$SUBSCRIBERS = exports.$$SUBSCRIBERS = Symbol('subscribers');
+	var $$SUBSCRIBE_CURRENT_ID = exports.$$SUBSCRIBE_CURRENT_ID = Symbol('subscribe-current-id');
+	var $$DISPATCH = exports.$$DISPATCH = Symbol('dispatch');
 	var ACTION_ASSIGN_STATE = exports.ACTION_ASSIGN_STATE = 'ACTION_ASSIGN_STATE';
 
 /***/ },
@@ -458,6 +541,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    deposit.forEach(depose.bind(this, token.mutate(deposit.length)));
 	  } else if ((0, _isAction2.default)(deposit)) {
 	    if (!Object.isFrozen(deposit)) {
+	      if (false) {
+	        token.__addDevStepAction(deposit);
+	      }
 	      this.dispatch(deposit, token.done.bind(token));
 	    } else {
 	      // ignore previous action
@@ -525,6 +611,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	  function DepositToken(actionName, producer) {
 	    _classCallCheck(this, DepositToken);
 
+	    if (false) {
+	      this.__historyStepsCount = [];
+	      this.__historyActions = [];
+	    }
 	    this.actionName = actionName;
 	    this.iterations = 0;
 	    this.producer = producer;
@@ -548,9 +638,22 @@ return /******/ (function(modules) { // webpackBootstrap
 	    key: 'done',
 	    value: function done() {
 	      this.iterations--;
+	      if (false) {
+	        this.__historyStepsCount++;
+	      }
 	      if (this.iterations === 0) {
+	        if (false) {
+	          //console.log("%c"+[this.actionName].concat(this.__historyActions).join(' : '), "color:gray;font-size:80%;");
+	          this.__historyStepsCount = [];
+	          this.__historyActions = [];
+	        }
 	        this.producer[_constants.$$MIDDLEWARES][this.actionName].actionRelease(this.actionName);
 	      }
+	    }
+	  }, {
+	    key: '__addDevStepAction',
+	    value: function __addDevStepAction(action) {
+	      this.__historyActions.push(action.type);
 	    }
 	  }]);
 
@@ -588,7 +691,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	function assignState(source) {
 	  var _this = this;
 
-	  return source.map(function (action) {
+	  return source.do(function (action) {
 	    Object.assign(_this[_constants.$$STATE], (0, _isPlainObject2.default)(action.state) ? action.state : {});
 	  });
 	}

@@ -3,7 +3,7 @@ if (process.env.NODE_ENV==='development') console.debug('Reactive-middleware in 
 
 import isAction from './isAction.js';
 import isObservable from './isObservable.js';
-import { $$MIDDLEWARES, $$STATE, $$CONTEXT, $$SUBSCRIBERS, $$SUBSCRIBE_CURRENT_ID, ACTION_ASSIGN_STATE } from './constants.js';
+import { $$MIDDLEWARES, $$STATE, $$CONTEXT, $$SUBSCRIBERS, $$SUBSCRIBE_CURRENT_ID, $$DISPATCH, ACTION_ASSIGN_STATE } from './constants.js';
 import isPlainObject from './isPlainObject';
 import forEach from './forEach';
 import depose from './depose.js';
@@ -98,6 +98,10 @@ class ReactiveStore {
          applyState.call(this);
        });
      });
+    /**
+     *
+     */
+    this.dispatch = this[$$DISPATCH].bind(this);
   }
 
   /**
@@ -129,7 +133,7 @@ class ReactiveStore {
    * @token  {(function)} [callback] Callback function
    * @return {type}        description
    */
-  dispatch(action, callback) {
+  [$$DISPATCH](action, callback) {
     debug(isAction(action), 'ReactiveStore prototype\'s method dispatch(action) requires an action object');
     if (process.env.NODE_ENV==='development') {
       var info = [];

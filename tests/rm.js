@@ -4,7 +4,7 @@ require('babel-register')({
 });
 import test from 'ava';
 // import 'babel-core/register';
-import { createStore } from './../src/rm.js';
+import { createStore } from './../src/rmrx.js';
 
 
 const ACTION_HELLO_TO = 'ACTION_HELLO_TO';
